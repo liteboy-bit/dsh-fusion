@@ -4,14 +4,32 @@ import { name, inject, Config, apply, internals } from "../lib/index.js";
 
 const LEAD = { id: "root-1", options: { model: "x" } };
 
-/** 最小可用的假 ctx：只实现插件真正碰到的四个面。 */
-function fakeCtx({ tasks = [], members = [], roots = [LEAD] } = {}) {
+/** 最小可用的假 ctx：只实现插件真正碰到的几个面。 */
+function fakeCtx({ tasks = [], members = [], roots = [LEAD], withTools = true } = {}) {
   const tools = new Map();
   const disposers = [];
   const emitted = [];
   const memberships = new Map(roots.map((a) => [a, { id: "team-1", name: "lead", root: a }]));
+  const agentTeams = {
+    tryMembership: (agent) => memberships.get(agent),
+    listenRoots: () => roots,
+    listRoots: () => roots,
+    listTasks: () => tasks,
+    listMembers: () => [{ id: "root-1", name: "lead", status: "running" }, ...members],
+  };
+  const services = new Map([["agentTeams", agentTeams]]);
+  if (withTools) {
+    services.set("tools", { register: (def) => (tools.set(def.name, def), () => tools.delete(def.name)) });
+  }
   return {
-    tools: { register: (def) => (tools.set(def.name, def), () => tools.delete(def.name)) },
+    get: (service) => services.get(service),
+    /*
+     * 忠实复刻 cordis 的 Context 代理：没在 inject 里声明就直读 `ctx.tools` 是抛错，
+     * 不是 undefined。留着这个 getter 是为了防止代码被人改回直读。
+     */
+    get tools() {
+      throw new Error('cannot get property "tools" without inject');
+    },
     effect: (fn) => {
       const d = fn();
       disposers.push(d);
@@ -19,15 +37,10 @@ function fakeCtx({ tasks = [], members = [], roots = [LEAD] } = {}) {
     },
     emit: (event, payload) => (emitted.push({ event, payload }), undefined),
     logger: { info: () => {} },
-    agentTeams: {
-      tryMembership: (agent) => memberships.get(agent),
-      listenRoots: () => roots,
-      listRoots: () => roots,
-      listTasks: () => tasks,
-      listMembers: () => [{ id: "root-1", name: "lead", status: "running" }, ...members],
-    },
+    agentTeams,
     _tools: tools,
     _emitted: emitted,
+    _services: services,
     _dispose: () => disposers.forEach((d) => typeof d === "function" && d()),
   };
 }
@@ -35,7 +48,8 @@ function fakeCtx({ tasks = [], members = [], roots = [LEAD] } = {}) {
 test("插件形状：名字、硬依赖、配置、apply", () => {
   assert.equal(name, "dsh-fusion");
   assert.deepEqual(inject, ["agentTeams"]);
-  assert.deepEqual(Object.keys(Config).sort(), ["advise", "sampleMs", "tools", "windowMs"]);
+  assert.deepEqual(Object.keys(Config), ["~standard"]);
+  assert.equal(typeof Config["~standard"].validate, "function");
   assert.equal(typeof apply, "function");
 });
 
@@ -53,6 +67,13 @@ test("注册的都是只读工具，一个能改状态的都没有", () => {
 test("tools: false 时不注册任何工具，但仍装 tick", () => {
   const ctx = fakeCtx();
   apply(ctx, { tools: false, sampleMs: 60_000 });
+  assert.equal(ctx._tools.size, 0);
+  ctx._dispose();
+});
+
+test("没有 tools 服务时照样激活：少四个查询工具，不是整台机器倒下", () => {
+  const ctx = fakeCtx({ withTools: false });
+  assert.doesNotThrow(() => apply(ctx, { sampleMs: 60_000 }));
   assert.equal(ctx._tools.size, 0);
   ctx._dispose();
 });

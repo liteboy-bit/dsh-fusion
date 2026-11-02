@@ -11,3 +11,6 @@ Thumbs.db
 # 审计落盘（如果使用者重定向到这里）
 *.jsonl
 !docs/**/*.jsonl
+
+# 实验区临时产物（trace / 探针 / 补丁脚本）
+.lab/

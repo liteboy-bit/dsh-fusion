@@ -31,7 +31,7 @@ pnpm add https://codeload.github.com/liteboy-bit/dsh-fusion/tar.gz/refs/heads/ma
 
 `postinstall` 会把 `dsh-fusion` 追加进 `dsh.profile.bundles`，插件的 `cordis.patch.yml` 会在 `dsh-base` 之后插入 `fusion` 插件。
 
-详见 [docs/INSTALL.md](docs/INSTALL.md)。
+详见 [docs/INSTALL.md](docs/INSTALL.md)。探索期怎么改一行立刻看到效果、怎么不重启、怎么先在一个独立 profile 里试：见 [docs/LAB.md](docs/LAB.md)。
 
 ## 拿出来的是什么
 
@@ -51,12 +51,12 @@ checkScope(task, changedPaths);                     // { ok: false, outside: ["s
 ## 测试
 
 ```
-node --test        # 44 assertions, 5 files, 0 dependencies
+node --test        # 65 assertions, 8 files, 0 dependencies
 ```
 
 ## 边界
 
-- 默认**只读**：只注册 `fusion_board` / `fusion_can` / `fusion_plan` 三个查询工具，不注册 spawn / interrupt / 写文件的工具。
+- 默认**只读**：只注册 `fusion_board` / `fusion_can` / `fusion_plan` / `fusion_worktree_hint` 四个查询工具，不注册 spawn / interrupt / 写文件的工具。
 - 看门狗永不返回 `interrupt: true`。这不是默认值，是写死的字段。
 - 采样窗短于 6 分钟不下任何结论（`unknown`）。
 - 不做 Router 角色；不 fork UI；不重写 `ctx.subagents`。

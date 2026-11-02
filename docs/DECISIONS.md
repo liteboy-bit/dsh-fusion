@@ -83,3 +83,33 @@
 按指示，multica 的改造先放着。它的可扩展性问题（多人会话携带的上下文太大）在 dsh 这边有现成答案：状态只有一份（根 session 日志），其余都是投影；mailbox 变化不发新视图（L682-725 的 WeakMap 复用）。
 
 **恢复条件**：dsh-fusion 在本机真实跑通一轮（看门狗报对一次、工作树开对一棵、越界拦对一次）之后再谈要不要回头改 multica。
+
+---
+
+## D10 配置层永不拒绝：写错只降级，不让板子消失
+
+**拿掉的**：「配置非法就拒绝加载」这条看起来最严谨的做法。
+
+**代价**：非法值会被静默钳到边界（`windowMs: 1` → 10000），使用者要多看一眼生效值。
+
+**理由**：cordis 的 `resolveConfig()` 一旦从 `Config["~standard"].validate()` 拿到 `issues`，整个插件条目就不激活——一个抄错的数字换掉四个只读工具，代价不对等。所以 `normalizeConfig()` **永不返回 issues**，只做三件事：钳位、布尔严格、丢未知键。另外 `Config` 必须是 standard-schema 对象（`{"~standard": {version, vendor, validate}}`），普通对象会让 cordis 抛 `reading 'validate'`——实测踩过。
+
+---
+
+## D11 工具声明按 dsh 的真实形状写，且逐个隔离
+
+**拿掉的**：「工具注册失败就整体不激活」和「参数用字段表直接塞给 register」。
+
+**代价**：多一个 `lib/tool-shape.mjs`（编译字段表 + 造 `output`），多一条回归断言。
+
+**理由**：`dsh-tools` L2876 的 `register()` 强制 `output { schema, render }`，缺了就抛；而 `defineTool()` 收字段表、`register()` 收 JSON Schema，中间那步编译没人替你做。踩中时的症状只有一句 `1 entry did not activate`，UI 里插件还显示「已安装」——所以四件事一起做：形状写对、参数编译、每个工具单独 try/catch（少一个查询入口 ≠ 整台机器倒下）、失败带名字进日志和 trace。
+
+---
+
+## D12 探索期要有自己的见证器，且默认零成本
+
+**拿掉的**：「靠控制台警告判断有没有生效」。
+
+**代价**：`lib/lab-trace.mjs` 一个文件；开启时每次接线写一行 JSONL。
+
+**理由**：HMR 期的异常在 stderr 上是静默的，只有 UI 里能看到；而「保存了到底生效没有」是探索期每天问几十次的问题。`DSH_FUSION_TRACE=<path>` 设置才写，未设置**零 IO**，所以它不是常驻开销。`apply` 行 = 模块被替换重跑，`ready` 行 = 四个工具注册完成；只有前者没有后者，就是接线后半段抛了。
