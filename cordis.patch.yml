@@ -1,0 +1,25 @@
+# dsh-fusion bundle patch
+#
+# 这一层只做两件事：插入 fusion 本体；把「建议走 Team 工具」这件事写进配置，
+# 但**不**关掉 tool-subagent*。是否关掉由使用者在自己的 profile patch 里决定。
+# 参考：@deepseek-ai/dsh-experimental-agent-team-profile/cordis.patch.yml 第 4-14 行
+# 官方做法是 disabled: true 掉 tool-subagent / tool-subagent-fork / tool-subagent-list-agents /
+# tool-subagent-control，把委派全压到 Team 工具上。我们把它留成注释，让使用者自己选。
+
+# - id: tool-subagent-control
+#   disabled: true
+# - id: tool-subagent-list-agents
+#   disabled: true
+# - id: tool-subagent
+#   disabled: true
+# - id: tool-subagent-fork
+#   disabled: true
+
+- insert:
+    - id: fusion
+      name: dsh-fusion
+      config:
+        windowMs: 360000
+        sampleMs: 30000
+        advise: true
+        tools: true

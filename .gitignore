@@ -1,0 +1,13 @@
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+pnpm-lock.yaml
+.DS_Store
+Thumbs.db
+
+# dsh 工作树池（dsh-experimental-worktree 默认落点）
+.agents/worktrees/
+
+# 审计落盘（如果使用者重定向到这里）
+*.jsonl
+!docs/**/*.jsonl

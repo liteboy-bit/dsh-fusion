@@ -1,0 +1,54 @@
+{
+  "name": "dsh-fusion",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness 融合框架：把 dsh 的 agent-team 任务 DAG、worktree 任务隔离、projection 共享状态，和 multica 的机制审计纪律缝在一起。只读优先，不抢权，不自动掐轮次。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./core": "./lib/core/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "docs",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "postinstall": "node scripts/ensure-profile-bundle.mjs"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "agent-team",
+    "orchestration",
+    "watchdog"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liteboy-bit/dsh-fusion.git"
+  },
+  "homepage": "https://github.com/liteboy-bit/dsh-fusion#readme",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "install": {
+      "preferred": "tarball",
+      "tarball": "https://codeload.github.com/liteboy-bit/dsh-fusion/tar.gz/refs/heads/main",
+      "zip": "https://codeload.github.com/liteboy-bit/dsh-fusion/zip/refs/heads/main",
+      "git": "https://github.com/liteboy-bit/dsh-fusion.git"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
