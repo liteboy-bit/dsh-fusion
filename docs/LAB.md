@@ -166,3 +166,62 @@ dsh --profile fusion-lab --port 43130 --no-open
 
 3. **可选服务用 `ctx.get("tools")`，不要 `ctx.tools`**。
    cordis 的 Context 代理对没在 `inject` 里声明的服务**读取即抛**（`cannot get property "tools" without inject`）；而声明进 `inject` 又会变成硬依赖（服务不在就 `pending`）。只读工具属于「有就挂、没有就算了」，走 `ctx.get`。
+
+---
+
+## 八、dsh 2.0.x 升级后，这里要跟着改的三处（2026-11-02 实测）
+
+那次升级的跨越：桌面壳 `0.2.1-alpha.2` → `2.0.21-beta.1`，dsh 运行时 `0.2.1-alpha.2` → `0.2.2-alpha.2`，cordis `4.0.5-alpha.1` → `4.0.6-alpha.1`。插件本身的 API 形状没变（`Config` 仍要 standard-schema、`tools.register()` 仍要 `output`），变的是**外面的包装**：
+
+### 1. `resources\app` 不见了，现在是 `app.asar`
+
+```
+resources\app.asar                    ← 运行时打包在这里（PowerShell 的 Test-Path 看不见里面）
+resources\app.asar.unpacked\node_modules\@deepseek-ai\   ← 只解出少数需要真实文件路径的包
+```
+
+后果：`%APPDATA%\DSH Desktop Beta\host-commands\…\bin\dsh.cmd` 里写死的 `resources\app\lib\desktop-cli.js` **已经不存在**，而且该目录也从用户 PATH 里掉了，`dsh` 直接不可用。
+
+修法（已做）：在 `C:\Users\zouwei\bin\dsh.cmd` 放一个自足启动器，并把 `C:\Users\zouwei\bin` 加进用户 PATH。核心就一行：
+
+```cmd
+"…\DSH Desktop Beta.exe" --expose-internals "…\resources\app.asar\lib\desktop-cli.js" %*
+```
+
+asar 路径可以照常传给 Electron，不用解包。
+
+### 2. profile patch 里的 `tool-subagent-list-agents` 没了
+
+新版直连 subagent 工具只剩三条：`tool-subagent-control` / `tool-subagent` / `tool-subagent-fork`。旧 patch 里那条已删的条目会让整个 profile 报错退出：
+
+```
+patch: entry "tool-subagent-list-agents" not found
+```
+
+而且团队运行时**不必再手插**：新版把 `@deepseek-ai/dsh-experimental-agent-team-profile` 作为 bundle 装了进来，它已经插好 `agent-team` / `tool-agent-team` / `ui-agent-team`，并关掉上面那三条直连工具。手插会撞 id。现在 `fusion-lab` 的 patch 只留：HMR 的 `root`、`fusion` 的运行参数、`agent-team` 的规模上限。
+
+### 3. 升级会杀掉正在跑的实例，端口也变了
+
+旧的 43130 进程随升级消失；桌面版重开后落在 64325。重起实验区：
+
+```powershell
+dsh --profile fusion-lab --port 43130 --no-open
+```
+
+复验记录（新版本上重跑一遍，结论与升级前一致）：
+
+```
+03:44:56Z apply + ready    ← 新运行时首启，四个工具注册成功
+03:45:21Z apply + ready    ← 保存一行源码，同一进程内热生效
+```
+
+**热重载在 2.0.x 上照旧有效。** 唯一要重启的仍然是「换包的版本」。
+
+### 升级后的自检清单
+
+```powershell
+dsh --version                                   # 0.2.2-alpha.2
+dsh --profile fusion-lab --dump-config | Select-String 'dsh-fusion|hmr|agent-team'
+```
+
+`--dump-config` 的 stderr 必须是空的。出现 `patch: entry "…" not found` 就是有条目被删或改名了——照着 `@deepseek-ai/dsh-experimental-agent-team-profile` 等 bundle 的实际 id 改。
