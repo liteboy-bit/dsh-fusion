@@ -51,8 +51,17 @@ checkScope(task, changedPaths);                     // { ok: false, outside: ["s
 ## 测试
 
 ```
-node --test        # 65 assertions, 8 files, 0 dependencies
+node --test        # 70 assertions, 9 files, 0 dependencies
 ```
+
+## 它说话的时刻（也是它沉默的时刻）
+
+四个工具和一段提示只在**有任务板的时候**才有话可说：没有团队、没有任务的普通对话里，这套东西一个字都不会出现在你眼前——这是刻意的，不是没生效。
+
+- **有团队、有任务时**：`fusion_board` 给出可接集合与写域撞车（dsh 自带的 `team_task_list` 也能给，我们只多做「撞车」这一层）。
+- **准备分活时**：`fusion_plan` 给 `delegate` / `self` / `keep` 的判定和往返成本——这一条 dsh 自己不会告诉你。
+- **越权动作**：`fusion_can` 的答案抄自硬检查，不是提示词。
+- **提交前**：`fusion_worktree_hint` 给分支、路径、以及改过的文件有没有越出写域。
 
 ## 边界
 

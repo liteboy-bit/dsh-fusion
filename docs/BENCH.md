@@ -125,6 +125,18 @@ node --test          # 65 assertions
 
 **为什么必须有**：HMR 期的异常在 stderr 上是**静默**的。没有这行 trace，「刚才那次保存到底生效没有」这个问题只能靠猜。
 
+## 行 10 `fusion-policy` —— 让模型真的会去问（`lib/policy.mjs`）
+
+| 项 | 值 |
+|---|---|
+| 断言数 | 5（`test/policy.test.mjs`） |
+| 覆盖面 | 五条触发条件点名四个工具；只读三承诺（`never spawn` / `never interrupt` / `never mutate`）在正文里而不只在注释里；不出现越权指令；≤ 12 行；段落号取自 `TEAM_POLICY`（600）；`advise: false` 时一个字都不进提示；没有 `systemPrompt` 服务时照常激活；注册抛错只留一行日志不打死插件 |
+| 与源码对齐 | `dsh-system-prompt` 的 `SECTION_ORDERS.TEAM_POLICY = 600`；`section({name, order, text})` 要求 `order` 有限；服务名 `systemPrompt`（`super(ctx, "systemPrompt")`） |
+| 成本 | 每轮对话多约 200 token（系统提示常驻，不走缓存分界）；启动时一次 `section()` |
+| 失败条件 | 段落名和 `team:policy` 撞名（同层同名会抛）；`order` 取了 `undefined`（`getSectionOrder` 拼错就直接是 `undefined`，`section()` 抛「order must be finite」） |
+
+**为什么必须有**：工具注册了不等于会被用。实测前四个工具在自然对话里**从不被调用**——模型看得到名字和描述，看不到「什么时候该问」。这一段只写触发条件、不写行为要求，是让工具从「摆设」变成「会去查」的最小改动。第一次实跑的证据：加完这段后，模型在新会话里自己调了 `fusion_board` 和 `fusion_plan`，7 秒一轮。
+
 ---
 
 ## 合计
@@ -140,4 +152,5 @@ node --test          # 65 assertions
 | config | 5 | 0 |
 | tools | 6 + 10 接线 | 0（启动时算一次） |
 | lab | 0（运行时观测） | 关闭 0 / 开启 150 字节每次 |
-| **合计** | **65** | 常驻内存 < 300KB，CPU 空闲 < 0.1%，改一行 ≈ 2 秒生效 |
+| policy | 5 | 约 200 token / 轮 |
+| **合计** | **70** | 常驻内存 < 300KB，CPU 空闲 < 0.1%，改一行 ≈ 2 秒生效 |
